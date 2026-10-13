@@ -19,9 +19,10 @@ This file stores durable project context for future contributors and coding agen
 
 ## Current technical direction
 
-- Desktop shell/core: Tauri 2 + Rust.
-- Frontend: React + TypeScript + Vite.
-- Styling: Tailwind CSS plus accessible component primitives.
+- Desktop shell/core: Tauri 2 + Rust (`openenhance_lib`).
+- Frontend: React 19 + TypeScript + Vite.
+- Package manager: npm (tested and verified on Windows development environment).
+- Styling: Tailwind CSS configured with Design System tokens (`bg.canvas`, `bg.surface`, `accent.primary`, etc.).
 - Media metadata/export: FFprobe and FFmpeg.
 - Candidate upscaler: Real-ESRGAN ncnn-Vulkan.
 - Candidate whole-video orchestration: Video2X.
@@ -59,10 +60,27 @@ This file stores durable project context for future contributors and coding agen
 - `API.md`: local command/event contract.
 - `RULES.md`: implementation and release standards.
 - `README.md`: project summary and developer workflow.
+- `THIRD_PARTY_NOTICES.md`: license and model inventory.
 
 ## Current stage
 
-Planning/specification stage. The documents are proposals, not evidence that a codebase, installer, engine integration or end-to-end workflow already exists.
+Phase 1 Complete (Repository Audit and Foundation).
+- Tauri 2 + Rust desktop core initialized and verified (`get_app_info`, `get_system_capabilities`).
+- React 19 + TypeScript + Vite frontend configured with Tailwind CSS design tokens.
+- Folder structure established per `ARCHITECTURE.md`.
+- Tests passing: 6 Rust unit tests (`cargo test`), 11 Vitest frontend tests (`npm test`).
+- Formatting (`prettier`) and linting (`eslint --max-warnings 0`) configured and enforced.
+- Development build confirmed: `npm run build` and `cargo build` pass cleanly.
+- Application executable built at `src-tauri/target/debug/openenhance.exe`.
+
+## Exact Next Phase
+
+Phase 2 — Design System and UI Shell.
+- Implement full design tokens, typography, spacing, surfaces, borders, and animations from `DESIGN.md`.
+- Build application shell and complete navigation.
+- Implement workspace, import screen, settings screen, queue screen, and history screen.
+- Implement responsive layouts, dialogs, notifications, loading states, empty states, and error states.
+- Ensure no major UI interactions are inert, while enhancement execution remains deferred to Phase 4.
 
 ## Decisions pending
 
@@ -72,7 +90,3 @@ Planning/specification stage. The documents are proposals, not evidence that a c
 - Whether models are bundled or downloaded on demand.
 - Exact pinned engine/model versions, checksums, platform matrix, FFmpeg build and codecs.
 - Minimum GPU memory and supported driver requirements.
-
-## How to update this file
-
-Only add durable decisions, verified technical facts, and major current constraints. Do not add credentials, secrets, personal information, raw logs, ephemeral bug notes, or speculative claims. Include the related PR/issue and date for meaningful decision changes when the repository begins tracking them.

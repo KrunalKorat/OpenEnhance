@@ -47,27 +47,34 @@ See the official Tauri prerequisites for the exact platform dependencies: https:
 
 The engine and model versions must be pinned by the repository once validated. Do not silently download executables or models as part of a job.
 
-## Getting started (planned workflow)
-
-These commands are the expected workflow after the Tauri project scaffold and scripts have been created; they may need adjustment to match the actual `package.json` scripts.
+## Development workflow
 
 ```bash
-# 1. Clone the repository after it exists on your Git host.
-git clone <repository-url>
-cd openenhance
+# 1. Install dependencies
+npm install
 
-# 2. Install JavaScript dependencies.
-pnpm install
+# 2. Run frontend tests (Vitest)
+npm test
 
-# 3. Run the desktop development app.
-pnpm tauri dev
+# 3. Run linting and formatting checks
+npm run lint
+npm run format:check
 
-# 4. Run frontend tests once configured.
-pnpm test
+# 4. Build the web distribution
+npm run build
 
-# 5. Build the frontend / desktop installer once configured.
-pnpm build
-pnpm tauri build
+# 5. Run Rust core unit tests
+cd src-tauri
+cargo test
+cd ..
+
+# 6. Build desktop binary
+cd src-tauri
+cargo build
+cd ..
+
+# 7. Launch Tauri desktop app in development
+npm run tauri dev
 ```
 
 Do not run a processing job until the engine and model have passed a capability check and a short end-to-end smoke test.
