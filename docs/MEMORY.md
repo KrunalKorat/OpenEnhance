@@ -10,6 +10,15 @@ This file stores durable project context for future contributors and coding agen
 - Core workflow: import → inspect → choose profile/resolution → process locally → validate → preview/export.
 - No paid APIs, cloud processing dependency, account, subscription, or telemetry in the MVP.
 
+## GitHub Repository & Distribution
+
+- Repository URL: `https://github.com/KrunalKorat/OpenEnhance`
+- Visibility: Public
+- Primary branch: `master`
+- Remote configuration: `origin https://github.com/KrunalKorat/OpenEnhance.git`
+- Initial published commit SHA: `5b1fc9c`
+- Authentication: GitHub CLI (`gh version 2.102.0`) authenticated as `KrunalKorat`.
+
 ## Target platforms and hardware
 
 - Desired desktop platforms: Windows, Linux, macOS.
@@ -17,12 +26,23 @@ This file stores durable project context for future contributors and coding agen
 - Platform support must be validated separately; do not promise NVIDIA GPU acceleration on macOS.
 - CPU fallback should be offered where a tested engine path exists, with clear performance warnings.
 
+## Verified Toolchain & Environment
+
+- OS: Windows 11 (x86_64)
+- Node.js: `v24.19.0`
+- Package manager: npm `11.17.0`
+- Rust toolchain: rustc `1.98.1` / cargo `1.98.1`
+- Tauri: Tauri 2 CLI `2.12.2` / core `2.12.3`
+- GitHub CLI: `gh 2.102.0`
+- Media tools: FFmpeg `N-125875-g5d4d3bdc61-20260731` and FFprobe on system PATH
+- Vite development server: `http://localhost:1420/` (watch configuration excludes `**/src-tauri/**` to prevent Windows DLL lock conflicts)
+
 ## Current technical direction
 
 - Desktop shell/core: Tauri 2 + Rust (`openenhance_lib`).
 - Frontend: React 19 + TypeScript + Vite.
-- Package manager: npm (tested and verified on Windows development environment).
-- Styling: Tailwind CSS configured with Design System tokens (`bg.canvas`, `bg.surface`, `accent.primary`, etc.).
+- Styling: Tailwind CSS configured with Design System tokens (`bg.canvas`, `bg.sidebar`, `bg.surface`, `bg.elevated`, `accent.primary`, `accent.secondary`, `status.success`, `status.warning`, `status.error`).
+- Component library: Custom accessible primitives (`Card`, `Badge`, `Button`, `Modal`, `SegmentedControl`, `EmptyState`, `Toast`, `Sidebar`, `Header`).
 - Media metadata/export: FFprobe and FFmpeg.
 - Candidate upscaler: Real-ESRGAN ncnn-Vulkan.
 - Candidate whole-video orchestration: Video2X.
@@ -59,34 +79,37 @@ This file stores durable project context for future contributors and coding agen
 - `DESIGN.md`: UI patterns, tokens and accessibility.
 - `API.md`: local command/event contract.
 - `RULES.md`: implementation and release standards.
-- `README.md`: project summary and developer workflow.
+- `README.md`: project summary, prerequisites, and developer workflow.
 - `THIRD_PARTY_NOTICES.md`: license and model inventory.
 
-## Current stage
+## Phase Status Summary
 
-Phase 1 Complete (Repository Audit and Foundation).
-- Tauri 2 + Rust desktop core initialized and verified (`get_app_info`, `get_system_capabilities`).
-- React 19 + TypeScript + Vite frontend configured with Tailwind CSS design tokens.
-- Folder structure established per `ARCHITECTURE.md`.
-- Tests passing: 6 Rust unit tests (`cargo test`), 11 Vitest frontend tests (`npm test`).
-- Formatting (`prettier`) and linting (`eslint --max-warnings 0`) configured and enforced.
-- Development build confirmed: `npm run build` and `cargo build` pass cleanly.
-- Application executable built at `src-tauri/target/debug/openenhance.exe`.
+- **Phase 1 — Repository Audit and Foundation:** COMPLETE & VERIFIED.
+  - Rust core commands `get_app_info` and `get_system_capabilities` verified.
+  - Passing: 6 Rust unit tests (`cargo test`).
+  - Base TypeScript models and API client verified.
+- **Phase 2 — Design System and UI Shell:** COMPLETE & VERIFIED.
+  - Full design system tokens and responsive desktop layout.
+  - Workspace / Enhancement Studio screen (`WorkspaceScreen.tsx`).
+  - Video Import screen with interactive drop-zone and storage checks (`ImportScreen.tsx`).
+  - Batch Queue screen with concurrency indicators and status badges (`QueueScreen.tsx`).
+  - Enhancement History screen with file sizes, filters, and open-folder actions (`HistoryScreen.tsx`).
+  - Settings screen with hardware diagnostics, storage preferences, and worker bounds (`SettingsScreen.tsx`).
+  - Accessible modals (`Modal.tsx`, `KeyboardHelpDialog.tsx`, `AboutDialog.tsx`).
+  - Toast notification system (`Toast.tsx`).
+  - Passing: 17 Vitest tests across 7 test files (`npm test`).
+  - Clean linting (`npm run lint`) and Prettier formatting (`npm run format:check`).
+  - Web production build built cleanly in 3.12s (`npm run build`).
+  - Desktop executable verified running via `npm run tauri dev`.
 
 ## Exact Next Phase
 
-Phase 2 — Design System and UI Shell.
-- Implement full design tokens, typography, spacing, surfaces, borders, and animations from `DESIGN.md`.
-- Build application shell and complete navigation.
-- Implement workspace, import screen, settings screen, queue screen, and history screen.
-- Implement responsive layouts, dialogs, notifications, loading states, empty states, and error states.
-- Ensure no major UI interactions are inert, while enhancement execution remains deferred to Phase 4.
+Phase 3 — Video Import and Metadata.
+- Implement native file selection dialog and OS drag-and-drop file ingestion.
+- Integrate FFprobe sidecar / adapter for media inspection.
+- Detect resolution, duration, frame rate, aspect ratio, audio codecs, and subtitle tracks.
+- Validate supported files and report actionable errors on malformed or unsupported inputs.
+- Implement thumbnail generation and preview where feasible.
+- Add disk-space and output-path validation.
 
-## Decisions pending
-
-- Final product name.
-- Project license.
-- Whether Video2X is included as an orchestrator or the app owns frame orchestration around a frame-level engine.
-- Whether models are bundled or downloaded on demand.
-- Exact pinned engine/model versions, checksums, platform matrix, FFmpeg build and codecs.
-- Minimum GPU memory and supported driver requirements.
+Stop after Phase 3.

@@ -16,6 +16,9 @@ export default defineConfig({
     port: 1420,
     strictPort: true,
     host: false,
+    watch: {
+      ignored: ['**/src-tauri/**'],
+    },
   },
   test: {
     globals: true,
