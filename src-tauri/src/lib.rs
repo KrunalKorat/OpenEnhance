@@ -5,13 +5,16 @@ pub mod events;
 pub mod jobs;
 pub mod media;
 pub mod pipeline;
+pub mod queue;
 pub mod security;
 pub mod storage;
 
 use commands::{
-    generate_thumbnail, get_app_info, get_engine_status, get_system_capabilities, inspect_media,
-    list_models, open_output, pick_video_files, plan_resolution, reveal_in_folder, run_enhancement,
-    run_frame_upscale,
+    cancel_job, clear_completed_jobs, create_job, generate_thumbnail, get_app_info,
+    get_engine_status, get_job, get_system_capabilities, inspect_media, list_jobs, list_models,
+    open_output, pause_job, pause_queue, pick_video_files, plan_resolution, process_queue_step,
+    recover_jobs, remove_job, resume_job, retry_job, reveal_in_folder, run_enhancement,
+    run_frame_upscale, start_queue,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -40,6 +43,19 @@ pub fn run() {
             run_enhancement,
             open_output,
             reveal_in_folder,
+            create_job,
+            list_jobs,
+            get_job,
+            cancel_job,
+            pause_job,
+            resume_job,
+            retry_job,
+            remove_job,
+            clear_completed_jobs,
+            start_queue,
+            pause_queue,
+            recover_jobs,
+            process_queue_step,
         ])
         .run(tauri::generate_context!())
         .expect("error while running OpenEnhance application");

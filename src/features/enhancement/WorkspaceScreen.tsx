@@ -30,6 +30,7 @@ import {
   Info,
   CheckCircle2,
   Play,
+  PlusCircle,
 } from 'lucide-react';
 
 export function WorkspaceScreen() {
@@ -59,6 +60,7 @@ export function WorkspaceScreen() {
     lastEnhancementResult,
     startEnhancement,
     dismissEnhancementResult,
+    addCurrentToQueue,
   } = useAppStore();
 
   const handleEnhanceClick = async () => {
@@ -680,27 +682,45 @@ export function WorkspaceScreen() {
           </div>
         </Card>
 
-        {/* Primary Action Button */}
+        {/* Primary Action Buttons */}
         <div className="pt-2">
-          <Button
-            variant="primary"
-            size="lg"
-            disabled={!currentMedia || isEnhancing || isInspecting}
-            onClick={handleEnhanceClick}
-            className="w-full gap-2 shadow-lg shadow-accent-primary/20 text-sm font-semibold"
-          >
-            {isEnhancing ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Enhancing Video (Vulkan AI)...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                Enhance Video
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              size="lg"
+              disabled={!currentMedia || isEnhancing || isInspecting}
+              onClick={handleEnhanceClick}
+              className="flex-1 gap-2 shadow-lg shadow-accent-primary/20 text-sm font-semibold"
+            >
+              {isEnhancing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Enhancing Video (Vulkan AI)...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Enhance Video
+                </>
+              )}
+            </Button>
+            <Button
+              variant="secondary"
+              size="lg"
+              disabled={!currentMedia || isEnhancing || isInspecting}
+              onClick={async () => {
+                const job = await addCurrentToQueue();
+                if (job) {
+                  setActiveTab('queue');
+                }
+              }}
+              title="Add to Persistent Queue"
+              className="gap-2 text-sm font-semibold px-4"
+            >
+              <PlusCircle className="w-4 h-4" />
+              Queue
+            </Button>
+          </div>
           <div className="flex items-center justify-center gap-1.5 text-[11px] text-text-muted text-center mt-2">
             <Info className="w-3.5 h-3.5 shrink-0" />
             <span>

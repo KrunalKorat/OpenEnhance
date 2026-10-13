@@ -34,10 +34,16 @@ export type JobState =
   | 'queued'
   | 'preparing'
   | 'running'
+  | 'pausing'
+  | 'paused'
   | 'cancelling'
   | 'cancelled'
+  | 'finalizing'
+  | 'completed'
   | 'succeeded'
-  | 'failed';
+  | 'failed'
+  | 'interrupted'
+  | 'recoverable';
 export type JobStage =
   | 'validating'
   | 'probing'

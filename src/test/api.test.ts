@@ -111,4 +111,56 @@ describe('API Client & Types', () => {
     const { revealInFolder } = await import('@/lib/api');
     await expect(revealInFolder('C:\\Videos\\sample_4k.mp4')).resolves.toBeUndefined();
   });
+
+  it('creates and manages persistent jobs in queue', async () => {
+    const {
+      createJob,
+      listJobs,
+      getJob,
+      cancelJob,
+      retryJob,
+      clearCompletedJobs,
+      recoverJobs,
+    } = await import('@/lib/api');
+
+    const created = await createJob({
+      inputPath: 'C:\\Videos\\sample.mp4',
+      outputPath: 'C:\\Videos\\sample_4k.mp4',
+      fileName: 'sample.mp4',
+      inputWidth: 1920,
+      inputHeight: 1080,
+      resolutionPreset: '4k',
+      model: 'realesrgan-x4plus',
+      encoder: 'libx264',
+      qualityPreset: 'high',
+      fitMode: 'contain',
+      container: 'mp4',
+      audioPolicy: 'preserve',
+      subtitlePolicy: 'preserve-supported',
+    });
+
+    expect(created.id).toBeDefined();
+    expect(created.state).toBe('queued');
+    expect(created.resolutionPreset).toBe('4k');
+
+    const list = await listJobs();
+    expect(list.length).toBeGreaterThan(0);
+    expect(list.some((j) => j.id === created.id)).toBe(true);
+
+    const retrieved = await getJob(created.id);
+    expect(retrieved).not.toBeNull();
+    expect(retrieved?.id).toBe(created.id);
+
+    const cancelled = await cancelJob(created.id);
+    expect(cancelled.state).toBe('cancelled');
+
+    const retried = await retryJob(created.id);
+    expect(retried.state).toBe('queued');
+
+    const recovered = await recoverJobs('retry');
+    expect(Array.isArray(recovered)).toBe(true);
+
+    const cleared = await clearCompletedJobs();
+    expect(typeof cleared).toBe('number');
+  });
 });

@@ -126,12 +126,22 @@ This file stores durable project context for future contributors and coding agen
   - UI integration: `WorkspaceScreen.tsx` displays live enhancement progress overlay with stage reporting and NVIDIA RTX Vulkan badge, and displays verified output card on completion. `HistoryScreen.tsx` supports Play and Show in Folder.
   - Verification suite: 24 Rust unit and end-to-end integration tests passing (`cargo test`), 32 Vitest frontend tests passing (`npm test`), 0 ESLint warnings, Prettier check clean, Vite production build clean.
 
+- **Phase 6 — Job Queue & Reliability:** COMPLETE & VERIFIED.
+  - Durable Job Storage (`src-tauri/src/queue/store.rs`): Atomic temporary file write (`jobs.json.tmp`) and file rename to `%LOCALAPPDATA%\OpenEnhance\jobs.json`. Schema version 1 with migration capability, in-memory cache, and full CRUD operations.
+  - Strict 12-State Lifecycle Machine (`src-tauri/src/queue/job.rs`): Queued, Preparing, Running, Pausing, Paused, Cancelling, Cancelled, Finalizing, Completed, Failed, Interrupted, Recoverable. Rejects invalid transitions.
+  - Queue Manager (`src-tauri/src/queue/manager.rs`): Bounded concurrency (default 1 concurrent active job to protect 4GB GPU VRAM), cooperative cancellation tokens (`Arc<AtomicBool>`), safe checkpoints (`JobCheckpoint`), failure isolation preventing cross-job contamination.
+  - Startup Crash Recovery: Scans persistent store on application initialization. Unfinished active jobs are checked against filesystem for input video and intermediate frames. Safe checkpoints marked `Recoverable`, interrupted jobs marked `Interrupted`. Provides `resume`, `restart`, and `discard` recovery options. Source video files and previously completed outputs are strictly protected from accidental deletion.
+  - IPC Commands (`src-tauri/src/commands/queue.rs`): `create_job`, `list_jobs`, `get_job`, `cancel_job`, `pause_job`, `resume_job`, `retry_job`, `remove_job`, `clear_completed_jobs`, `start_queue`, `pause_queue`, `recover_jobs`, `process_queue_step`.
+  - Frontend UI & State (`src/stores/appState.tsx`, `QueueScreen.tsx`, `WorkspaceScreen.tsx`, `HistoryScreen.tsx`): Real persistent queue list with live state badges, progress bars (progress%, frame counts, FPS), crash recovery alert banner, pause/resume, cancel, retry, remove controls, global queue pause/start, and "Add to Queue" action button in Workspace.
+  - Verification: 28 Rust tests passing (`cargo test`), 33 Vitest tests passing (`npm test`), 0 ESLint warnings, Prettier check clean, Vite production bundle build clean.
+
 ## Exact Next Phase
 
-Phase 6 — Job Queue & Reliability.
-- Persistent SQLite / JSON local job queue and state store.
-- Batch scheduling, pause/resume, concurrency bounds, and crash recovery.
-- Resumable frame processing checkpoints for long-running video tasks.
+Phase 7 — Advanced Quality Features.
+- Specialized model profiles for anime, illustration, and natural video (Real-CUGAN, Anime4K, RIFE evaluations).
+- Model management, source and licensing disclosure in `THIRD_PARTY_NOTICES.md`.
+- Quality controls (tiling, denoise, backend selection).
+- Before/after interactive split comparison slider in Workspace.
 
-Stop after Phase 5. Phase 6 begins only on explicit user instruction.
+
 

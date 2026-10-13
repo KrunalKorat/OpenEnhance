@@ -10,6 +10,7 @@ import type {
   EnhancementResult,
 } from '@/types/api';
 import type { MediaInfo } from '@/types/media';
+import type { CreateJobRequest, JobSummary, RecoverAction } from '@/types/jobs';
 
 /**
  * Checks if the current execution context is within the Tauri desktop runtime.
@@ -364,6 +365,340 @@ export async function revealInFolder(path: string): Promise<void> {
 
   try {
     await invoke<void>('reveal_in_folder', { path });
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+// In-memory fallback queue for non-Tauri browser testing
+const fallbackJobs: JobSummary[] = [];
+
+function normalizeJobSummary(raw: Record<string, unknown>): JobSummary {
+  const jobId = (raw.jobId as string) || (raw.id as string) || `job_${Date.now()}`;
+  const fileName =
+    (raw.fileName as string) ||
+    (raw.currentFile as string) ||
+    (raw.inputPath as string)?.split('\\').pop()?.split('/').pop() ||
+    'video.mp4';
+  const outputPreset =
+    (raw.outputPreset as string) || (raw.resolutionPreset as string) || '4k';
+  const model = (raw.model as string) || (raw.modelId as string) || 'realesrgan-x4plus';
+  const canRecover = ((raw.canRecover ?? raw.isRecoverable) as boolean) ?? false;
+  return {
+    jobId,
+    id: jobId,
+    state: (raw.state as JobSummary['state']) || 'queued',
+    stage: (raw.stage as JobSummary['stage']) || 'queued',
+    progressPercent: (raw.progressPercent as number) ?? 0,
+    progressMode: (raw.progressMode as 'determinate' | 'indeterminate') ?? 'determinate',
+    currentFile: fileName,
+    fileName,
+    inputPath: (raw.inputPath as string) || '',
+    outputPath: (raw.outputPath as string) || '',
+    outputPreset,
+    resolutionPreset: outputPreset,
+    model,
+    modelId: model,
+    sourceWidth: (raw.sourceWidth ?? raw.inputWidth) as number | undefined,
+    sourceHeight: (raw.sourceHeight ?? raw.inputHeight) as number | undefined,
+    inputWidth: (raw.inputWidth ?? raw.sourceWidth) as number | undefined,
+    inputHeight: (raw.inputHeight ?? raw.sourceHeight) as number | undefined,
+    targetWidth: (raw.targetWidth as number) ?? 3840,
+    targetHeight: (raw.targetHeight as number) ?? 2160,
+    startedAt: raw.startedAt as string | undefined,
+    createdAt: raw.createdAt as string | undefined,
+    completedAt: raw.completedAt as string | undefined,
+    updatedAt: (raw.updatedAt as string) || `${Date.now()}`,
+    elapsedMs: raw.elapsedMs as number | undefined,
+    estimatedRemainingMs: raw.estimatedRemainingMs as number | undefined,
+    attempt: (raw.attempt as number) ?? 1,
+    processedFrames: raw.processedFrames as number | undefined,
+    totalFrames: raw.totalFrames as number | undefined,
+    fps: raw.fps as number | undefined,
+    errorMessage: (raw.errorMessage ?? raw.error) as string | undefined,
+    errorCode: raw.errorCode as string | undefined,
+    canRecover,
+    isRecoverable: canRecover,
+  };
+}
+
+/**
+ * Submits a new job to the persistent queue.
+ */
+export async function createJob(request: CreateJobRequest): Promise<JobSummary> {
+  const normalizedReq = {
+    inputPath: request.inputPath,
+    outputPath: request.outputPath,
+    outputPreset: request.outputPreset || request.resolutionPreset || '4k',
+    modelId: request.modelId || request.model || 'realesrgan-x4plus',
+    qualityPreset: request.qualityPreset || 'high',
+    fitMode: request.fitMode || 'contain',
+    container: request.container || 'mp4',
+    audioPolicy: request.audioPolicy || 'preserve',
+    subtitlePolicy: request.subtitlePolicy || 'preserve-supported',
+    targetWidth: request.targetWidth ?? 3840,
+    targetHeight: request.targetHeight ?? 2160,
+    sourceWidth: request.sourceWidth ?? request.inputWidth,
+    sourceHeight: request.sourceHeight ?? request.inputHeight,
+  };
+
+  if (!isTauriEnvironment()) {
+    const job = normalizeJobSummary({
+      jobId: `job_${Date.now()}`,
+      state: 'queued',
+      progressPercent: 0,
+      progressMode: 'determinate',
+      currentFile: normalizedReq.inputPath.split('\\').pop()?.split('/').pop(),
+      inputPath: normalizedReq.inputPath,
+      outputPath: normalizedReq.outputPath,
+      outputPreset: normalizedReq.outputPreset,
+      modelId: normalizedReq.modelId,
+      sourceWidth: normalizedReq.sourceWidth,
+      sourceHeight: normalizedReq.sourceHeight,
+      targetWidth: normalizedReq.targetWidth,
+      targetHeight: normalizedReq.targetHeight,
+      updatedAt: `${Date.now()}`,
+      attempt: 1,
+      processedFrames: 0,
+      totalFrames: 100,
+      isRecoverable: false,
+    });
+    fallbackJobs.unshift(job);
+    return job;
+  }
+
+  try {
+    const res = await invoke<Record<string, unknown>>('create_job', {
+      request: normalizedReq,
+    });
+    return normalizeJobSummary(res);
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Lists all persistent jobs in newest-first order.
+ */
+export async function listJobs(): Promise<JobSummary[]> {
+  if (!isTauriEnvironment()) {
+    return [...fallbackJobs].map((j) =>
+      normalizeJobSummary(j as unknown as Record<string, unknown>)
+    );
+  }
+
+  try {
+    const res = await invoke<Record<string, unknown>[]>('list_jobs');
+    return res.map(normalizeJobSummary);
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Retrieves a single job summary by ID.
+ */
+export async function getJob(jobId: string): Promise<JobSummary | null> {
+  if (!isTauriEnvironment()) {
+    const found = fallbackJobs.find((j) => j.jobId === jobId || j.id === jobId);
+    return found
+      ? normalizeJobSummary(found as unknown as Record<string, unknown>)
+      : null;
+  }
+
+  try {
+    const res = await invoke<Record<string, unknown> | null>('get_job', { jobId });
+    return res ? normalizeJobSummary(res) : null;
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Cancels a queued or active job.
+ */
+export async function cancelJob(jobId: string): Promise<JobSummary> {
+  if (!isTauriEnvironment()) {
+    const job = fallbackJobs.find((j) => j.jobId === jobId || j.id === jobId);
+    if (job) {
+      job.state = 'cancelled';
+      job.errorMessage = 'Job was cancelled by user.';
+      return normalizeJobSummary(job as unknown as Record<string, unknown>);
+    }
+    throw normalizeAppError('Job not found');
+  }
+
+  try {
+    const res = await invoke<Record<string, unknown>>('cancel_job', { jobId });
+    return normalizeJobSummary(res);
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Pauses a running job cooperatively.
+ */
+export async function pauseJob(jobId: string): Promise<JobSummary> {
+  if (!isTauriEnvironment()) {
+    const job = fallbackJobs.find((j) => j.jobId === jobId || j.id === jobId);
+    if (job) {
+      job.state = 'paused';
+      return normalizeJobSummary(job as unknown as Record<string, unknown>);
+    }
+    throw normalizeAppError('Job not found');
+  }
+
+  try {
+    const res = await invoke<Record<string, unknown>>('pause_job', { jobId });
+    return normalizeJobSummary(res);
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Resumes a paused or recoverable job.
+ */
+export async function resumeJob(jobId: string): Promise<JobSummary> {
+  if (!isTauriEnvironment()) {
+    const job = fallbackJobs.find((j) => j.jobId === jobId || j.id === jobId);
+    if (job) {
+      job.state = 'queued';
+      return normalizeJobSummary(job as unknown as Record<string, unknown>);
+    }
+    throw normalizeAppError('Job not found');
+  }
+
+  try {
+    const res = await invoke<Record<string, unknown>>('resume_job', { jobId });
+    return normalizeJobSummary(res);
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Retries a failed or cancelled job.
+ */
+export async function retryJob(jobId: string): Promise<JobSummary> {
+  if (!isTauriEnvironment()) {
+    const job = fallbackJobs.find((j) => j.jobId === jobId || j.id === jobId);
+    if (job) {
+      job.state = 'queued';
+      job.attempt += 1;
+      job.errorMessage = undefined;
+      return normalizeJobSummary(job as unknown as Record<string, unknown>);
+    }
+    throw normalizeAppError('Job not found');
+  }
+
+  try {
+    const res = await invoke<Record<string, unknown>>('retry_job', { jobId });
+    return normalizeJobSummary(res);
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Deletes a job from the queue.
+ */
+export async function removeJob(jobId: string): Promise<boolean> {
+  if (!isTauriEnvironment()) {
+    const idx = fallbackJobs.findIndex((j) => j.jobId === jobId);
+    if (idx !== -1) {
+      fallbackJobs.splice(idx, 1);
+      return true;
+    }
+    return false;
+  }
+
+  try {
+    return await invoke<boolean>('remove_job', { jobId });
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Clears finished and cancelled jobs from the database.
+ */
+export async function clearCompletedJobs(): Promise<number> {
+  if (!isTauriEnvironment()) {
+    const initial = fallbackJobs.length;
+    for (let i = fallbackJobs.length - 1; i >= 0; i--) {
+      if (
+        fallbackJobs[i].state === 'completed' ||
+        fallbackJobs[i].state === 'cancelled'
+      ) {
+        fallbackJobs.splice(i, 1);
+      }
+    }
+    return initial - fallbackJobs.length;
+  }
+
+  try {
+    return await invoke<number>('clear_completed_jobs');
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Starts or unpauses queue execution.
+ */
+export async function startQueue(): Promise<void> {
+  if (!isTauriEnvironment()) return;
+  try {
+    await invoke<void>('start_queue');
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Pauses global queue execution.
+ */
+export async function pauseQueue(): Promise<void> {
+  if (!isTauriEnvironment()) return;
+  try {
+    await invoke<void>('pause_queue');
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Recovers interrupted or recoverable jobs after a restart or crash.
+ */
+export async function recoverJobs(
+  action: RecoverAction,
+  jobId?: string
+): Promise<JobSummary[]> {
+  if (!isTauriEnvironment()) {
+    return [];
+  }
+
+  const rustAction = action === 'retry' ? 'restart' : action;
+  try {
+    const res = await invoke<Record<string, unknown>[]>('recover_jobs', {
+      action: rustAction,
+      jobId,
+    });
+    return res.map(normalizeJobSummary);
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Advances next queued job in background worker.
+ */
+export async function processQueueStep(): Promise<boolean> {
+  if (!isTauriEnvironment()) return false;
+  try {
+    return await invoke<boolean>('process_queue_step');
   } catch (error) {
     throw normalizeAppError(error);
   }

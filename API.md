@@ -195,9 +195,29 @@ Returns current job state and the latest safe error details.
 
 Requests cancellation. Resolves when the cancellation request is accepted, not necessarily when the subprocess has terminated. Final `cancelled` state arrives via event/query. Reject if cancellation is unsupported or the job is already terminal.
 
-### `retry_job({ jobId })`
+### `pause_job({ jobId })`
 
-Creates a new attempt using the original settings snapshot. If output would overwrite a file, require explicit confirmation or a new destination. Returns the new job summary.
+Requests cooperative pausing of a running job at the next safe frame boundary or checkpoint.
+
+### `resume_job({ jobId })`
+
+Resumes a paused job from its validated checkpoint.
+
+### `remove_job({ jobId })`
+
+Deletes a non-active job entry from the persistent queue without modifying output files.
+
+### `clear_completed_jobs()`
+
+Removes completed and cancelled jobs from persistent storage while keeping all generated media intact.
+
+### `start_queue()` / `pause_queue()`
+
+Controls global queue processing worker execution.
+
+### `recover_jobs({ action, jobId? })`
+
+Executes startup crash recovery with action `'resume'`, `'restart'`, or `'discard'`.
 
 ### `open_output({ path })`
 

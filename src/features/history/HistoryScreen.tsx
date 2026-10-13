@@ -117,8 +117,10 @@ export function HistoryScreen() {
 
       {/* Persistence Note */}
       <Card className="bg-bg-sidebar/40 border-border-subtle text-xs text-text-muted flex items-center justify-between">
-        <span>Persistent SQLite / JSON database storage activates in Phase 6.</span>
-        <Badge variant="default">Local Cache</Badge>
+        <span>
+          Persistent job history stored locally in %LOCALAPPDATA%\OpenEnhance\jobs.json.
+        </span>
+        <Badge variant="accent">Durable Store</Badge>
       </Card>
     </div>
   );
