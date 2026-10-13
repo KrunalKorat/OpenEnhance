@@ -1,5 +1,14 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { AppError, AppInfo, SystemCapabilities } from '@/types/api';
+import type {
+  AppError,
+  AppInfo,
+  SystemCapabilities,
+  EngineStatus,
+  ModelInfo,
+  ResolutionPlan,
+  EnhancementJobConfig,
+  EnhancementResult,
+} from '@/types/api';
 import type { MediaInfo } from '@/types/media';
 
 /**
@@ -166,6 +175,195 @@ export async function pickVideoFiles(): Promise<string[]> {
 
   try {
     return await invoke<string[]>('pick_video_files');
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Gets real AI engine status, GPU device, and model availability.
+ */
+export async function getEngineStatus(): Promise<EngineStatus> {
+  if (!isTauriEnvironment()) {
+    return {
+      engineId: 'realesrgan-ncnn-vulkan',
+      engineVersion: '20220424-vulkan',
+      available: true,
+      acceleration: 'vulkan',
+      gpuDevice: 'NVIDIA GeForce RTX 3050 Laptop GPU (dev mock)',
+      gpuId: 1,
+      models: [
+        {
+          modelId: 'realesrgan-x4plus',
+          name: 'Real-ESRGAN x4 Plus',
+          scale: 4,
+          description: 'General photo and video detail restoration',
+          installed: true,
+          verified: true,
+          fileSizeBytes: 33424520,
+        },
+        {
+          modelId: 'realesr-animevideov3',
+          name: 'Real-ESRGAN AnimeVideo v3',
+          scale: 4,
+          description: 'Fast animation restoration',
+          installed: true,
+          verified: true,
+          fileSizeBytes: 1247368,
+        },
+      ],
+      warnings: [],
+    };
+  }
+
+  try {
+    return await invoke<EngineStatus>('get_engine_status');
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Lists models with verified installation status and metadata.
+ */
+export async function listModels(): Promise<ModelInfo[]> {
+  if (!isTauriEnvironment()) {
+    const status = await getEngineStatus();
+    return status.models;
+  }
+
+  try {
+    return await invoke<ModelInfo[]>('list_models');
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Computes exact resolution scaling and letterboxing/cropping filter chain.
+ */
+export async function planResolution(
+  sourceWidth: number,
+  sourceHeight: number,
+  targetPreset: string,
+  fitMode: string,
+  modelScale: number
+): Promise<ResolutionPlan> {
+  if (!isTauriEnvironment()) {
+    const targetMap: Record<string, [number, number]> = {
+      '1080p': [1920, 1080],
+      '1440p': [2560, 1440],
+      '4k': [3840, 2160],
+    };
+    const [targetWidth, targetHeight] = targetMap[targetPreset] || [1920, 1080];
+    return {
+      sourceWidth,
+      sourceHeight,
+      targetPreset,
+      targetWidth,
+      targetHeight,
+      fitMode,
+      modelScale,
+      aiWidth: sourceWidth * modelScale,
+      aiHeight: sourceHeight * modelScale,
+      needsUpscale: sourceWidth < targetWidth || sourceHeight < targetHeight,
+      ffmpegFilter: `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2`,
+    };
+  }
+
+  try {
+    return await invoke<ResolutionPlan>('plan_resolution', {
+      sourceWidth,
+      sourceHeight,
+      targetPreset,
+      fitMode,
+      modelScale,
+    });
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Runs single frame upscale for preview and smoke testing.
+ */
+export async function runFrameUpscale(
+  inputPath: string,
+  outputPath: string,
+  modelId: string,
+  scale: number
+): Promise<void> {
+  if (!isTauriEnvironment()) {
+    return;
+  }
+
+  try {
+    await invoke<void>('run_frame_upscale', {
+      inputPath,
+      outputPath,
+      modelId,
+      scale,
+    });
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Executes full video enhancement and export pipeline.
+ */
+export async function runEnhancement(
+  config: EnhancementJobConfig
+): Promise<EnhancementResult> {
+  if (!isTauriEnvironment()) {
+    const plan = await planResolution(1280, 720, config.outputPreset, config.fitMode, 4);
+    return {
+      success: true,
+      outputPath: config.outputPath,
+      targetWidth: plan.targetWidth,
+      targetHeight: plan.targetHeight,
+      actualWidth: plan.targetWidth,
+      actualHeight: plan.targetHeight,
+      durationMs: 45000,
+      fileSizeBytes: 24500000,
+      videoCodec: 'h264',
+      audioTracksCount: 1,
+      resolutionPlan: plan,
+    };
+  }
+
+  try {
+    return await invoke<EnhancementResult>('run_enhancement', { config });
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Opens output video file in system default player.
+ */
+export async function openOutput(path: string): Promise<void> {
+  if (!isTauriEnvironment()) {
+    return;
+  }
+
+  try {
+    await invoke<void>('open_output', { path });
+  } catch (error) {
+    throw normalizeAppError(error);
+  }
+}
+
+/**
+ * Reveals output video file in Windows Explorer or macOS Finder.
+ */
+export async function revealInFolder(path: string): Promise<void> {
+  if (!isTauriEnvironment()) {
+    return;
+  }
+
+  try {
+    await invoke<void>('reveal_in_folder', { path });
   } catch (error) {
     throw normalizeAppError(error);
   }

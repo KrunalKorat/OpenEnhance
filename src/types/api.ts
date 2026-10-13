@@ -98,3 +98,67 @@ export const OUTPUT_DIMENSIONS = {
   '1440p': { width: 2560, height: 1440 },
   '4k': { width: 3840, height: 2160 },
 } as const;
+
+export interface ModelInfo {
+  modelId: string;
+  name: string;
+  scale: number;
+  description: string;
+  installed: boolean;
+  verified: boolean;
+  fileSizeBytes: number;
+  licenseUrl?: string;
+}
+
+export interface EngineStatus {
+  engineId: string;
+  engineVersion: string;
+  available: boolean;
+  binaryPath?: string;
+  modelsPath?: string;
+  acceleration: string;
+  gpuDevice?: string;
+  gpuId: number;
+  models: ModelInfo[];
+  warnings: string[];
+}
+
+export interface ResolutionPlan {
+  sourceWidth: number;
+  sourceHeight: number;
+  targetPreset: string;
+  targetWidth: number;
+  targetHeight: number;
+  fitMode: string;
+  modelScale: number;
+  aiWidth: number;
+  aiHeight: number;
+  needsUpscale: boolean;
+  ffmpegFilter: string;
+}
+
+export interface EnhancementJobConfig {
+  inputPath: string;
+  outputPath: string;
+  outputPreset: string;
+  modelId: string;
+  qualityPreset: string;
+  fitMode: string;
+  container: string;
+  audioPolicy: string;
+  subtitlePolicy: string;
+}
+
+export interface EnhancementResult {
+  success: boolean;
+  outputPath: string;
+  targetWidth: number;
+  targetHeight: number;
+  actualWidth: number;
+  actualHeight: number;
+  durationMs?: number;
+  fileSizeBytes: number;
+  videoCodec?: string;
+  audioTracksCount: number;
+  resolutionPlan: ResolutionPlan;
+}

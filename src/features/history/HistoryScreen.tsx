@@ -5,16 +5,33 @@ import { EmptyState } from '@/components/EmptyState';
 import { useAppStore } from '@/stores/appState';
 import { History, Trash2, Folder, ExternalLink } from 'lucide-react';
 import { formatBytes } from '@/lib/formatting';
+import { revealInFolder, openOutput } from '@/lib/api';
 
 export function HistoryScreen() {
   const { history, clearHistory, addToast, setActiveTab } = useAppStore();
 
-  const handleOpenFolder = (path: string) => {
-    addToast({
-      type: 'info',
-      title: 'Reveal in Folder',
-      description: `Opening export folder for: ${path}`,
-    });
+  const handleOpenFolder = async (path: string) => {
+    try {
+      await revealInFolder(path);
+    } catch (err: unknown) {
+      addToast({
+        type: 'error',
+        title: 'Could Not Open Folder',
+        description: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
+
+  const handlePlayVideo = async (path: string) => {
+    try {
+      await openOutput(path);
+    } catch (err: unknown) {
+      addToast({
+        type: 'error',
+        title: 'Could Not Play Video',
+        description: err instanceof Error ? err.message : String(err),
+      });
+    }
   };
 
   return (
@@ -86,13 +103,7 @@ export function HistoryScreen() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    addToast({
-                      type: 'info',
-                      title: 'Playback',
-                      description: 'Native media player launcher integrates in Phase 5.',
-                    })
-                  }
+                  onClick={() => handlePlayVideo(item.outputPath)}
                   className="gap-1.5"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />

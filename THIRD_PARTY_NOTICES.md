@@ -18,6 +18,21 @@ Do not treat the entries below as permission to redistribute every asset. Verify
 | Anime4K | Optional shader path | https://github.com/bloc97/Anime4K | Repository license has historically been MIT; verify chosen version/assets | Review before inclusion |
 | RIFE | Optional frame interpolation | https://github.com/nihui/rife-ncnn-vulkan | Verify exact repository, model and binary terms | Review before inclusion |
 
+## Verified Real-ESRGAN Engine Inventory (Phase 4 & 5)
+
+| Field | Details |
+|---|---|
+| **Component** | Real-ESRGAN ncnn-Vulkan (NCNN Vulkan GPU AI Video & Image Upscaler) |
+| **Upstream Release** | `v0.2.5.0` (`20220424-windows`) |
+| **Source Repository** | https://github.com/xinntao/Real-ESRGAN / https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan |
+| **Archive Artifact** | `realesrgan-ncnn-vulkan-20220424-windows.zip` |
+| **Archive SHA-256** | `ABC02804E17982A3BE33675E4D471E91EA374E65B70167ABC09E31ACB412802D` |
+| **Executable Name** | `realesrgan-ncnn-vulkan.exe` (SHA-256: `F507F5EC4E9A779C6F561C1420790F326888A9C1683416FE47F3CC5B98B35EE3`) |
+| **Engine License** | BSD 3-Clause (NCNN) / MIT (Real-ESRGAN wrapper) |
+| **Verified Models** | `realesrgan-x4plus` (4×, 67MB param/bin), `realesrgan-x4plus-anime` (4×, 17MB param/bin), `realesr-animevideov3` (2×, 3×, 4×, 2.5MB param/bin) |
+| **Local Deployment** | Installed locally in `%LOCALAPPDATA%\OpenEnhance\engine` (outside Git repository tracking) |
+| **Hardware Acceleration** | Vulkan discrete GPU (`NVIDIA GeForce RTX 3050 Laptop GPU`, Device ID: 1) |
+
 ## Required inventory fields for each redistributed artifact
 
 - Component and purpose.

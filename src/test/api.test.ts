@@ -61,4 +61,54 @@ describe('API Client & Types', () => {
     expect(Array.isArray(files)).toBe(true);
     expect(files.length).toBeGreaterThan(0);
   });
+
+  it('checks AI engine status and returns EngineStatus', async () => {
+    const { getEngineStatus } = await import('@/lib/api');
+    const status = await getEngineStatus();
+    expect(status.engineId).toBe('realesrgan-ncnn-vulkan');
+    expect(typeof status.available).toBe('boolean');
+    expect(status.acceleration).toBe('vulkan');
+  });
+
+  it('lists installed and verified models', async () => {
+    const { listModels } = await import('@/lib/api');
+    const models = await listModels();
+    expect(Array.isArray(models)).toBe(true);
+    expect(models.length).toBeGreaterThan(0);
+    expect(models[0].name).toBeDefined();
+    expect(models[0].scale).toBeGreaterThanOrEqual(1);
+  });
+
+  it('plans output resolution maintaining aspect ratio', async () => {
+    const { planResolution } = await import('@/lib/api');
+    const plan = await planResolution(1920, 1080, '4k', 'contain', 4);
+    expect(plan.targetWidth).toBe(3840);
+    expect(plan.targetHeight).toBe(2160);
+    expect(plan.modelScale).toBe(4);
+    expect(plan.ffmpegFilter).toContain('scale=3840:2160');
+  });
+
+  it('runs enhancement workflow returning verified result in fallback mode', async () => {
+    const { runEnhancement } = await import('@/lib/api');
+    const result = await runEnhancement({
+      inputPath: 'C:\\Videos\\sample.mp4',
+      outputPath: 'C:\\Videos\\sample_4k.mp4',
+      outputPreset: '4k',
+      modelId: 'realesrgan-x4plus',
+      qualityPreset: 'high',
+      fitMode: 'contain',
+      container: 'mp4',
+      audioPolicy: 'preserve',
+      subtitlePolicy: 'preserve-supported',
+    });
+    expect(result.actualWidth).toBe(3840);
+    expect(result.actualHeight).toBe(2160);
+    expect(result.videoCodec).toBe('h264');
+    expect(result.audioTracksCount).toBeGreaterThanOrEqual(0);
+  });
+
+  it('reveals output in folder safely', async () => {
+    const { revealInFolder } = await import('@/lib/api');
+    await expect(revealInFolder('C:\\Videos\\sample_4k.mp4')).resolves.toBeUndefined();
+  });
 });

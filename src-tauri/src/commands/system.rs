@@ -54,27 +54,6 @@ fn check_binary(binary_name: &str, args: &[&str]) -> (bool, Option<String>) {
     }
 }
 
-fn check_vulkan() -> (bool, Option<String>) {
-    // Try vulkaninfo --summary or vulkaninfo
-    if let Ok(output) = Command::new("vulkaninfo").arg("--summary").output() {
-        if output.status.success() {
-            let text = String::from_utf8_lossy(&output.stdout);
-            // Search for deviceName = ...
-            for line in text.lines() {
-                let trimmed = line.trim();
-                if trimmed.starts_with("deviceName") {
-                    let parts: Vec<&str> = trimmed.split('=').collect();
-                    if parts.len() > 1 {
-                        return (true, Some(parts[1].trim().to_string()));
-                    }
-                }
-            }
-            return (true, Some("Vulkan Driver Detected".to_string()));
-        }
-    }
-    (false, None)
-}
-
 #[tauri::command]
 pub fn get_system_capabilities() -> SystemCapabilities {
     let mut warnings = Vec::new();
@@ -89,7 +68,10 @@ pub fn get_system_capabilities() -> SystemCapabilities {
         warnings.push("FFprobe is not detected on system PATH. Media inspection may be unavailable.".to_string());
     }
 
-    let (vulkan_available, vulkan_device) = check_vulkan();
+    let engine_status = crate::engines::realesrgan::RealEsrganAdapter::get_status();
+    let vulkan_available = engine_status.acceleration == "vulkan";
+    let vulkan_device = engine_status.gpu_device.clone();
+
     if !vulkan_available {
         warnings.push("Vulkan runtime was not detected via vulkaninfo. GPU acceleration requires verified Vulkan support.".to_string());
     }
@@ -104,35 +86,29 @@ pub fn get_system_capabilities() -> SystemCapabilities {
         "unknown"
     };
 
+    let models = engine_status
+        .models
+        .iter()
+        .map(|m| ModelCapability {
+            model_id: m.model_id.clone(),
+            installed: m.installed,
+            verified: m.verified,
+            license_url: m.license_url.clone(),
+        })
+        .collect();
+
     let engine = EngineCapabilities {
-        engine_id: "realesrgan-ncnn-vulkan".to_string(),
-        engine_version: "candidate-adapter".to_string(),
-        available: vulkan_available,
+        engine_id: engine_status.engine_id,
+        engine_version: engine_status.engine_version,
+        available: engine_status.available,
         platform: os.to_string(),
-        acceleration: if vulkan_available { "vulkan".to_string() } else { "unknown".to_string() },
+        acceleration: engine_status.acceleration,
         device_name: vulkan_device.clone(),
-        models: vec![
-            ModelCapability {
-                model_id: "realesrgan-x4plus".to_string(),
-                installed: false,
-                verified: false,
-                license_url: Some("https://github.com/xinntao/Real-ESRGAN/blob/master/LICENSE".to_string()),
-            },
-            ModelCapability {
-                model_id: "realesrgan-x4plus-anime".to_string(),
-                installed: false,
-                verified: false,
-                license_url: Some("https://github.com/xinntao/Real-ESRGAN/blob/master/LICENSE".to_string()),
-            },
-        ],
+        models,
         supports_cancellation: true,
         supports_progress: true,
         supported_operations: vec!["upscale".to_string()],
-        warnings: if !vulkan_available {
-            vec!["Vulkan acceleration unavailable for Real-ESRGAN engine.".to_string()]
-        } else {
-            vec![]
-        },
+        warnings: engine_status.warnings,
     };
 
     SystemCapabilities {

@@ -1,8 +1,20 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { ContentProfile, FitMode, OutputPreset, QualityPreset } from '@/types/api';
+import type {
+  ContentProfile,
+  FitMode,
+  OutputPreset,
+  QualityPreset,
+  EngineStatus,
+  EnhancementResult,
+} from '@/types/api';
 import type { AppPreferences } from '@/types/settings';
 import type { MediaInfo } from '@/types/media';
-import { inspectMedia, generateThumbnail } from '@/lib/api';
+import {
+  inspectMedia,
+  generateThumbnail,
+  getEngineStatus,
+  runEnhancement,
+} from '@/lib/api';
 
 export interface ToastMessage {
   id: string;
@@ -75,6 +87,14 @@ interface AppContextValue {
   inspectionError: string | null;
   importVideoByPath: (path: string) => Promise<boolean>;
   clearCurrentMedia: () => void;
+
+  // Phase 4 & 5 AI Engine & Export state
+  engineStatus: EngineStatus | null;
+  isEnhancing: boolean;
+  enhancementProgress: { stage: string; percent: number; message: string } | null;
+  lastEnhancementResult: EnhancementResult | null;
+  startEnhancement: () => Promise<boolean>;
+  dismissEnhancementResult: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -212,6 +232,122 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setInspectionError(null);
   };
 
+  // Phase 4 & 5 AI Engine & Enhancement state
+  const [engineStatus, setEngineStatus] = useState<EngineStatus | null>(null);
+  const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
+  const [enhancementProgress, setEnhancementProgress] = useState<{
+    stage: string;
+    percent: number;
+    message: string;
+  } | null>(null);
+  const [lastEnhancementResult, setLastEnhancementResult] =
+    useState<EnhancementResult | null>(null);
+
+  useEffect(() => {
+    getEngineStatus()
+      .then(setEngineStatus)
+      .catch(() => {});
+  }, []);
+
+  const dismissEnhancementResult = () => {
+    setLastEnhancementResult(null);
+  };
+
+  const startEnhancement = async (): Promise<boolean> => {
+    if (!currentMedia) {
+      addToast({
+        type: 'warning',
+        title: 'No Video Selected',
+        description: 'Please import a video first.',
+      });
+      return false;
+    }
+
+    setIsEnhancing(true);
+    setEnhancementProgress({
+      stage: 'probing',
+      percent: 5,
+      message: 'Inspecting media streams with FFprobe...',
+    });
+
+    try {
+      const modelMap: Record<ContentProfile, string> = {
+        general: 'realesrgan-x4plus',
+        'live-action': 'realesrgan-x4plus',
+        anime: 'realesrgan-x4plus-anime',
+        animation: 'realesr-animevideov3',
+      };
+      const modelId = modelMap[profile] || 'realesrgan-x4plus';
+
+      const baseName = currentMedia.fileName.replace(/\.[^/.]+$/, '');
+      const inputDir = currentMedia.path.includes('\\')
+        ? currentMedia.path.substring(0, currentMedia.path.lastIndexOf('\\'))
+        : currentMedia.path.substring(0, currentMedia.path.lastIndexOf('/'));
+      const ext = container === 'mkv' ? 'mkv' : 'mp4';
+      const outputFolder = preferences.defaultOutputFolder || inputDir;
+      const outputPath = `${outputFolder}\\${baseName}_${outputPreset}_enhanced.${ext}`;
+
+      setEnhancementProgress({
+        stage: 'upscaling',
+        percent: 30,
+        message: `Running Real-ESRGAN Vulkan inference (${modelId})...`,
+      });
+
+      const result = await runEnhancement({
+        inputPath: currentMedia.path,
+        outputPath,
+        outputPreset,
+        modelId,
+        qualityPreset: quality,
+        fitMode,
+        container,
+        audioPolicy,
+        subtitlePolicy,
+      });
+
+      setLastEnhancementResult(result);
+
+      const historyItem: HistoryItemData = {
+        id: Math.random().toString(36).slice(2, 9),
+        fileName: currentMedia.fileName,
+        sourceResolution: `${currentMedia.width}×${currentMedia.height}`,
+        outputResolution: `${result.actualWidth}×${result.actualHeight}`,
+        completedAt: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        outputPath: result.outputPath,
+        status: 'succeeded',
+        fileSizeBytes: result.fileSizeBytes,
+      };
+      setHistory((prev) => [historyItem, ...prev]);
+
+      addToast({
+        type: 'success',
+        title: 'Enhancement Complete',
+        description: `Verified output: ${result.actualWidth}×${result.actualHeight} (${outputPreset.toUpperCase()})`,
+        duration: 8000,
+      });
+
+      return true;
+    } catch (err: unknown) {
+      const msg =
+        typeof err === 'object' && err !== null && 'message' in err
+          ? (err as { message: string }).message
+          : 'Enhancement failed';
+      addToast({
+        type: 'error',
+        title: 'Enhancement Failed',
+        description: msg,
+        duration: 8000,
+      });
+      return false;
+    } finally {
+      setIsEnhancing(false);
+      setEnhancementProgress(null);
+    }
+  };
+
   const [queue] = useState<QueueItemData[]>([]);
   const [history, setHistory] = useState<HistoryItemData[]>([]);
 
@@ -282,6 +418,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         inspectionError,
         importVideoByPath,
         clearCurrentMedia,
+        engineStatus,
+        isEnhancing,
+        enhancementProgress,
+        lastEnhancementResult,
+        startEnhancement,
+        dismissEnhancementResult,
       }}
     >
       {children}

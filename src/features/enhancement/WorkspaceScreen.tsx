@@ -11,7 +11,7 @@ import {
   formatFrameRate,
   formatBitrate,
 } from '@/lib/formatting';
-import { pickVideoFiles } from '@/lib/api';
+import { pickVideoFiles, openOutput, revealInFolder } from '@/lib/api';
 import {
   Sparkles,
   Sliders,
@@ -28,6 +28,8 @@ import {
   X,
   RefreshCw,
   Info,
+  CheckCircle2,
+  Play,
 } from 'lucide-react';
 
 export function WorkspaceScreen() {
@@ -51,9 +53,15 @@ export function WorkspaceScreen() {
     inspectionError,
     importVideoByPath,
     clearCurrentMedia,
+    engineStatus,
+    isEnhancing,
+    enhancementProgress,
+    lastEnhancementResult,
+    startEnhancement,
+    dismissEnhancementResult,
   } = useAppStore();
 
-  const handleEnhanceClick = () => {
+  const handleEnhanceClick = async () => {
     if (!currentMedia) {
       addToast({
         type: 'warning',
@@ -65,12 +73,11 @@ export function WorkspaceScreen() {
       return;
     }
 
-    addToast({
-      type: 'info',
-      title: 'Phase 4 AI Pipeline Ready',
-      description: `Target: ${currentDimensions.width}×${currentDimensions.height} (${outputPreset.toUpperCase()}) with ${profile} profile. AI inference model connects in Phase 4.`,
-      duration: 6000,
-    });
+    if (isEnhancing) {
+      return;
+    }
+
+    await startEnhancement();
   };
 
   const handleBrowseVideo = async () => {
@@ -242,6 +249,51 @@ export function WorkspaceScreen() {
                   )}
                 </div>
 
+                {/* Active Enhancement Progress Overlay */}
+                {isEnhancing && (
+                  <div className="absolute inset-0 bg-black/85 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 text-center">
+                    <div className="w-14 h-14 rounded-full bg-accent-primary/10 border border-accent-primary/40 flex items-center justify-center text-accent-primary mb-3 shadow-xl">
+                      <Loader2 className="w-7 h-7 animate-spin" />
+                    </div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Badge variant="accent">Real AI Enhancement Active</Badge>
+                      <Badge variant="default">
+                        {engineStatus?.gpuDevice ?? 'NVIDIA Vulkan Backend'}
+                      </Badge>
+                    </div>
+                    <h3 className="text-sm font-semibold text-text-primary mt-1">
+                      {enhancementProgress?.stage === 'probing' &&
+                        'Inspecting media streams...'}
+                      {enhancementProgress?.stage === 'extracting' &&
+                        'Extracting frames with FFmpeg...'}
+                      {enhancementProgress?.stage === 'upscaling' &&
+                        'Running Real-ESRGAN Vulkan AI inference...'}
+                      {enhancementProgress?.stage === 'assembling' &&
+                        'Assembling & encoding final video...'}
+                      {enhancementProgress?.stage === 'validating' &&
+                        'Verifying output with FFprobe...'}
+                      {!enhancementProgress?.stage &&
+                        'Processing video with Real-ESRGAN...'}
+                    </h3>
+                    <p className="text-xs text-text-secondary max-w-sm mt-1 leading-relaxed font-mono">
+                      {enhancementProgress?.message ||
+                        'Processing frames with NVIDIA Tensor/Vulkan acceleration...'}
+                    </p>
+                    <div className="w-full max-w-xs mt-3.5 bg-bg-surface/80 rounded-full h-1.5 overflow-hidden border border-border-subtle">
+                      <div
+                        className="bg-accent-primary h-full transition-all duration-300"
+                        style={{
+                          width: `${Math.max(5, Math.min(100, enhancementProgress?.percent ?? 15))}%`,
+                        }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-text-muted mt-2 font-mono">
+                      {enhancementProgress?.percent ?? 0}% completed • Dedicated GPU
+                      Pipeline
+                    </div>
+                  </div>
+                )}
+
                 {/* Quick overlay change action button */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center gap-3">
                   <Button
@@ -385,6 +437,94 @@ export function WorkspaceScreen() {
             </div>
           </div>
         </Card>
+
+        {/* Verified Export Result Card */}
+        {lastEnhancementResult && (
+          <Card className="p-4 bg-status-success/10 border border-status-success/30 flex flex-col gap-3">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-status-success/20 text-status-success flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-text-primary">
+                    AI Enhancement & Export Verified
+                  </h4>
+                  <p className="text-xs text-text-secondary mt-0.5">
+                    Verified by FFprobe: {lastEnhancementResult.actualWidth}×
+                    {lastEnhancementResult.actualHeight} (
+                    {lastEnhancementResult.videoCodec?.toUpperCase() ?? 'H264'})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={dismissEnhancementResult}
+                className="text-text-muted hover:text-text-primary p-1 rounded transition-colors"
+                title="Dismiss"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+              <div className="p-2 rounded bg-bg-surface border border-border-subtle">
+                <div className="text-[10px] text-text-muted font-sans">Resolution</div>
+                <div className="font-semibold text-status-success mt-0.5">
+                  {lastEnhancementResult.actualWidth}×{lastEnhancementResult.actualHeight}
+                </div>
+              </div>
+              <div className="p-2 rounded bg-bg-surface border border-border-subtle">
+                <div className="text-[10px] text-text-muted font-sans">File Size</div>
+                <div className="font-semibold text-text-primary mt-0.5">
+                  {formatBytes(lastEnhancementResult.fileSizeBytes)}
+                </div>
+              </div>
+              <div className="p-2 rounded bg-bg-surface border border-border-subtle">
+                <div className="text-[10px] text-text-muted font-sans">Duration</div>
+                <div className="font-semibold text-text-primary mt-0.5">
+                  {formatDuration(lastEnhancementResult.durationMs ?? 0)}
+                </div>
+              </div>
+              <div className="p-2 rounded bg-bg-surface border border-border-subtle">
+                <div className="text-[10px] text-text-muted font-sans">Audio Streams</div>
+                <div className="font-semibold text-text-primary mt-0.5">
+                  {lastEnhancementResult.audioTracksCount > 0
+                    ? `${lastEnhancementResult.audioTracksCount} Preserved`
+                    : 'Muted'}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => openOutput(lastEnhancementResult.outputPath)}
+                className="gap-2"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                Play Enhanced Video
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => revealInFolder(lastEnhancementResult.outputPath)}
+                className="gap-2"
+              >
+                <Folder className="w-3.5 h-3.5" />
+                Reveal in Folder
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={dismissEnhancementResult}
+                className="ml-auto"
+              >
+                Dismiss
+              </Button>
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Right Column: Enhancement Configuration Panels */}
@@ -422,7 +562,9 @@ export function WorkspaceScreen() {
               <Layers className="w-4 h-4 text-accent-secondary" />
               <h3 className="text-sm font-semibold text-text-primary">Content Profile</h3>
             </div>
-            <Badge variant="default">Vulkan Model</Badge>
+            <Badge variant="default">
+              {engineStatus?.gpuDevice ? `${engineStatus.gpuDevice}` : 'Vulkan Model'}
+            </Badge>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -543,17 +685,29 @@ export function WorkspaceScreen() {
           <Button
             variant="primary"
             size="lg"
+            disabled={!currentMedia || isEnhancing || isInspecting}
             onClick={handleEnhanceClick}
             className="w-full gap-2 shadow-lg shadow-accent-primary/20 text-sm font-semibold"
           >
-            <Sparkles className="w-4 h-4" />
-            Enhance Video
+            {isEnhancing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Enhancing Video (Vulkan AI)...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                Enhance Video
+              </>
+            )}
           </Button>
           <div className="flex items-center justify-center gap-1.5 text-[11px] text-text-muted text-center mt-2">
             <Info className="w-3.5 h-3.5 shrink-0" />
             <span>
               {currentMedia
-                ? 'All streams validated. AI inference connects in Phase 4.'
+                ? isEnhancing
+                  ? 'Real-ESRGAN Vulkan engine actively upscaling video frames...'
+                  : 'Hardware-accelerated Vulkan pipeline with Real-ESRGAN.'
                 : 'Import video to unlock enhancement pipeline.'}
             </span>
           </div>

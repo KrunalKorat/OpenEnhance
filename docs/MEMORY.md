@@ -112,13 +112,26 @@ This file stores durable project context for future contributors and coding agen
   - Automated tests: 27 Vitest tests across 8 test suites (`npm test`), 11 Rust tests (`cargo test` including real media integration test with FFprobe and FFmpeg).
   - Quality assurance: ESLint 0 warnings, Prettier check clean, Vite production bundle build clean (`npm run build`).
 
+- **Phase 4 — AI Engine Integration:** COMPLETE & VERIFIED.
+  - Upstream `xinntao/Real-ESRGAN` ncnn-Vulkan binary (`20220424-windows`, SHA-256: `ABC02804E17982A3BE33675E4D471E91EA374E65B70167ABC09E31ACB412802D`) provisioned into `%LOCALAPPDATA%\OpenEnhance\engine` (outside Git tracking).
+  - Hardware & Vulkan diagnostics: Enumerated devices via `vulkaninfo`. Detected `GPU 0: Intel UHD Graphics` and `GPU 1: NVIDIA GeForce RTX 3050 Laptop GPU`. Discrete NVIDIA GPU explicitly prioritized for hardware tensor/CUDA core Vulkan inference (`-g 1`).
+  - Real-ESRGAN adapter implemented in `src-tauri/src/engines/realesrgan.rs`: safe process execution with argument vector, model verification, single frame inference, directory batch upscaling, and structured status reporting.
+  - Verified real inference smoke test: real test image upscaled with `realesrgan-x4plus` model on NVIDIA RTX 3050 in under 2 seconds.
+
+- **Phase 5 — Resolution & Export Controls:** COMPLETE & VERIFIED.
+  - Resolution Planner (`src-tauri/src/pipeline/resolution.rs`): supports exact 1080p (`1920×1080`), 1440p (`2560×1440`), and 4K (`3840×2160`) targets with `contain` (letterbox pad) and `crop` (center crop) aspect ratio strategies. Downscales when input exceeds target resolution.
+  - Video Enhancement Pipeline (`src-tauri/src/pipeline/export.rs`): managed workspaces in `%LOCALAPPDATA%\OpenEnhance\temp\<job_id>`, frame extraction via FFmpeg, genuine AI frame upscaling via `RealEsrganAdapter`, reassembly into MP4/MKV with documented CRF quality presets (`maximum`: CRF 16, `high`: CRF 20, `balanced`: CRF 23), audio preservation by default, and subtitle stream mapping.
+  - Output validation: strict FFprobe inspection checking file existence, non-zero size, decodable media streams, exact target width and height, duration, and audio stream presence.
+  - Desktop integration: `open_output` launches system default media player, `reveal_in_folder` highlights file in Windows Explorer.
+  - UI integration: `WorkspaceScreen.tsx` displays live enhancement progress overlay with stage reporting and NVIDIA RTX Vulkan badge, and displays verified output card on completion. `HistoryScreen.tsx` supports Play and Show in Folder.
+  - Verification suite: 24 Rust unit and end-to-end integration tests passing (`cargo test`), 32 Vitest frontend tests passing (`npm test`), 0 ESLint warnings, Prettier check clean, Vite production build clean.
+
 ## Exact Next Phase
 
-Phase 4 — AI Engine Integration.
-- Integrate Real-ESRGAN ncnn-Vulkan adapter and model directory management.
-- Implement Vulkan GPU / device detection and model selection.
-- Implement safe frame extraction, scaling execution, and progress reporting without freezing UI.
-- Verify cancellation, resource cleanup, and failure recovery.
+Phase 6 — Job Queue & Reliability.
+- Persistent SQLite / JSON local job queue and state store.
+- Batch scheduling, pause/resume, concurrency bounds, and crash recovery.
+- Resumable frame processing checkpoints for long-running video tasks.
 
-Stop after Phase 3. Phase 4 begins only on explicit user instruction.
+Stop after Phase 5. Phase 6 begins only on explicit user instruction.
 

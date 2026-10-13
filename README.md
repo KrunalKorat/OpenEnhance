@@ -2,7 +2,7 @@
 
 **OpenEnhance is a proposed working name for a local-first, open-source AI video upscaling and restoration desktop app.** It aims to let users choose 1080p, 1440p, or 4K output and process footage on their own computer without paid APIs or a cloud backend.
 
-> Project status: documentation / planning stage. Do not assume all features, commands, engines, or platform builds are implemented yet.
+> **Project status:** Phase 5 Complete — Real AI Engine Integration & Resolution/Export Controls verified with NVIDIA Vulkan acceleration, Real-ESRGAN inference, and FFmpeg reassembly. Next: Phase 6 (Job Queue & Reliability).
 
 ## Product goals
 
