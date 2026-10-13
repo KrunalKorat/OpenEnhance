@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build and distribution
+dist/
+dist-ssr/
+*.local
+
+# Tauri build artifacts
+src-tauri/target/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Video outputs and test artifacts
+*.mp4
+*.mkv
+*.avi
+*.mov
+test-output/
+tmp/
+temp/
+node_modules
