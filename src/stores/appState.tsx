@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ContentProfile, FitMode, OutputPreset, QualityPreset } from '@/types/api';
 import type { AppPreferences } from '@/types/settings';
+import type { MediaInfo } from '@/types/media';
+import { inspectMedia, generateThumbnail } from '@/lib/api';
 
 export interface ToastMessage {
   id: string;
@@ -64,6 +66,15 @@ interface AppContextValue {
   setIsAboutOpen: (open: boolean) => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
+
+  // Media Inspection & Video Import state
+  currentMedia: MediaInfo | null;
+  setCurrentMedia: (media: MediaInfo | null) => void;
+  importedVideos: MediaInfo[];
+  isInspecting: boolean;
+  inspectionError: string | null;
+  importVideoByPath: (path: string) => Promise<boolean>;
+  clearCurrentMedia: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -86,6 +97,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [isKeyboardHelpOpen, setIsKeyboardHelpOpen] = useState<boolean>(false);
   const [isAboutOpen, setIsAboutOpen] = useState<boolean>(false);
+
+  // Phase 3 Media state
+  const [currentMedia, setCurrentMedia] = useState<MediaInfo | null>(null);
+  const [importedVideos, setImportedVideos] = useState<MediaInfo[]>([]);
+  const [isInspecting, setIsInspecting] = useState<boolean>(false);
+  const [inspectionError, setInspectionError] = useState<string | null>(null);
 
   const [preferences, setPreferences] = useState<AppPreferences>({
     theme: 'dark',
@@ -123,10 +140,79 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  // Sample queue items for Phase 2 UI Demonstration (without simulating fake enhancement)
-  const [queue] = useState<QueueItemData[]>([]);
+  // Import video by path and run real FFprobe inspection & thumbnail extraction
+  const importVideoByPath = async (path: string): Promise<boolean> => {
+    if (!path.trim()) {
+      addToast({
+        type: 'error',
+        title: 'Invalid Path',
+        description: 'File path cannot be empty.',
+      });
+      return false;
+    }
 
-  // History list with clear function
+    if (currentMedia?.path === path) {
+      addToast({
+        type: 'info',
+        title: 'Already Loaded',
+        description: `"${currentMedia.fileName}" is already loaded in the studio.`,
+      });
+      setActiveTab('workspace');
+      return true;
+    }
+
+    setIsInspecting(true);
+    setInspectionError(null);
+
+    try {
+      const media = await inspectMedia(path);
+
+      // Attempt thumbnail generation in background without blocking
+      try {
+        const thumbUrl = await generateThumbnail(path);
+        media.thumbnailUrl = thumbUrl;
+      } catch {
+        // Thumbnail failure is non-fatal for inspection
+      }
+
+      setCurrentMedia(media);
+      setImportedVideos((prev) => {
+        const filtered = prev.filter((item) => item.path !== media.path);
+        return [media, ...filtered];
+      });
+
+      addToast({
+        type: 'success',
+        title: 'Video Inspected',
+        description: `${media.fileName} (${media.width}×${media.height}, ${media.videoCodec ?? 'video'})`,
+      });
+
+      setActiveTab('workspace');
+      return true;
+    } catch (err: unknown) {
+      const errMsg =
+        typeof err === 'object' && err !== null && 'message' in err
+          ? (err as { message: string }).message
+          : 'Failed to inspect media file';
+      setInspectionError(errMsg);
+      addToast({
+        type: 'error',
+        title: 'Inspection Failed',
+        description: errMsg,
+        duration: 6000,
+      });
+      return false;
+    } finally {
+      setIsInspecting(false);
+    }
+  };
+
+  const clearCurrentMedia = () => {
+    setCurrentMedia(null);
+    setInspectionError(null);
+  };
+
+  const [queue] = useState<QueueItemData[]>([]);
   const [history, setHistory] = useState<HistoryItemData[]>([]);
 
   const clearHistory = () => {
@@ -189,6 +275,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setIsAboutOpen,
         sidebarCollapsed,
         setSidebarCollapsed,
+        currentMedia,
+        setCurrentMedia,
+        importedVideos,
+        isInspecting,
+        inspectionError,
+        importVideoByPath,
+        clearCurrentMedia,
       }}
     >
       {children}

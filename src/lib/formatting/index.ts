@@ -26,3 +26,32 @@ export function formatDuration(ms: number): string {
   }
   return `${pad(minutes)}:${pad(seconds)}`;
 }
+
+/**
+ * Formats frame rate into human-readable fps string.
+ */
+export function formatFrameRate(
+  numerator?: number,
+  denominator?: number,
+  average?: number
+): string {
+  if (numerator && denominator && denominator > 0) {
+    const fps = numerator / denominator;
+    return `${fps.toFixed(fps % 1 === 0 ? 0 : 2)} fps`;
+  }
+  if (average && average > 0) {
+    return `${average.toFixed(average % 1 === 0 ? 0 : 2)} fps`;
+  }
+  return 'Unknown fps';
+}
+
+/**
+ * Formats bits per second into human-readable rate.
+ */
+export function formatBitrate(bps?: number): string {
+  if (!bps || bps <= 0) return 'Unknown';
+  if (bps >= 1_000_000) {
+    return `${(bps / 1_000_000).toFixed(1)} Mbps`;
+  }
+  return `${Math.round(bps / 1000)} kbps`;
+}

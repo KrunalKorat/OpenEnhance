@@ -7,7 +7,9 @@ pub mod media;
 pub mod security;
 pub mod storage;
 
-use commands::{get_app_info, get_system_capabilities};
+use commands::{
+    generate_thumbnail, get_app_info, get_system_capabilities, inspect_media, pick_video_files,
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -24,7 +26,10 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_app_info,
-            get_system_capabilities
+            get_system_capabilities,
+            inspect_media,
+            generate_thumbnail,
+            pick_video_files
         ])
         .run(tauri::generate_context!())
         .expect("error while running OpenEnhance application");

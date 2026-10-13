@@ -3,12 +3,14 @@ export interface AudioTrackInfo {
   codec?: string;
   language?: string;
   channels?: number;
+  sampleRate?: number;
 }
 
 export interface SubtitleTrackInfo {
   index: number;
   codec?: string;
   language?: string;
+  title?: string;
 }
 
 export interface MediaInfo {
@@ -26,6 +28,11 @@ export interface MediaInfo {
   pixelFormat?: string;
   bitrate?: number;
   fileSizeBytes: number;
+  displayAspectRatio?: string;
+  sampleAspectRatio?: string;
+  frameCount?: number;
+  rotation?: number;
   audioTracks: AudioTrackInfo[];
   subtitleTracks: SubtitleTrackInfo[];
+  thumbnailUrl?: string;
 }

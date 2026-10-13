@@ -102,14 +102,23 @@ This file stores durable project context for future contributors and coding agen
   - Web production build built cleanly in 3.12s (`npm run build`).
   - Desktop executable verified running via `npm run tauri dev`.
 
+- **Phase 3 — Video Import and Metadata:** COMPLETE & VERIFIED.
+  - Native file picker via `rfd` (Rust OS dialog) supporting multi-file selection with video format filters.
+  - Drag-and-drop file ingestion supporting filesystem path resolution in desktop and webview contexts.
+  - Safe FFprobe binary execution with argument vector (no shell interpolation).
+  - Comprehensive metadata parsing: dimensions, duration, fractional frame rate (e.g. `30000/1001`), average/nominal fps, VFR detection, SAR/DAR, video codec, pixel format, audio tracks (channels, sample rate, codec, language), subtitle tracks, rotation, container, and file size.
+  - Real thumbnail generation via FFmpeg with application-managed disk cache in `%TEMP%/openenhance_thumbnails/<sha256>.jpg` and base64 data URL delivery.
+  - UI updates: `WorkspaceScreen` displays preview frame, resolution badges, duration, fps, bitrate, audio tracks, and stream specs. `ImportScreen` displays dropzone, native browse action, and recently inspected video items.
+  - Automated tests: 27 Vitest tests across 8 test suites (`npm test`), 11 Rust tests (`cargo test` including real media integration test with FFprobe and FFmpeg).
+  - Quality assurance: ESLint 0 warnings, Prettier check clean, Vite production bundle build clean (`npm run build`).
+
 ## Exact Next Phase
 
-Phase 3 — Video Import and Metadata.
-- Implement native file selection dialog and OS drag-and-drop file ingestion.
-- Integrate FFprobe sidecar / adapter for media inspection.
-- Detect resolution, duration, frame rate, aspect ratio, audio codecs, and subtitle tracks.
-- Validate supported files and report actionable errors on malformed or unsupported inputs.
-- Implement thumbnail generation and preview where feasible.
-- Add disk-space and output-path validation.
+Phase 4 — AI Engine Integration.
+- Integrate Real-ESRGAN ncnn-Vulkan adapter and model directory management.
+- Implement Vulkan GPU / device detection and model selection.
+- Implement safe frame extraction, scaling execution, and progress reporting without freezing UI.
+- Verify cancellation, resource cleanup, and failure recovery.
 
-Stop after Phase 3.
+Stop after Phase 3. Phase 4 begins only on explicit user instruction.
+

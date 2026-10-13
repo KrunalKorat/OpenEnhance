@@ -36,4 +36,29 @@ describe('API Client & Types', () => {
     expect(caps.engines.length).toBeGreaterThan(0);
     expect(caps.engines[0].engineId).toBe('realesrgan-ncnn-vulkan');
   });
+
+  it('inspects media file and returns structured MediaInfo in fallback mode', async () => {
+    const { inspectMedia } = await import('@/lib/api');
+    const media = await inspectMedia('C:\\Videos\\sample.mp4');
+    expect(media.width).toBe(1920);
+    expect(media.height).toBe(1080);
+    expect(media.fileName).toBe('sample.mp4');
+    expect(media.videoCodec).toBe('h264');
+    expect(media.frameRateNumerator).toBe(30000);
+    expect(media.frameRateDenominator).toBe(1001);
+    expect(media.audioTracks.length).toBeGreaterThan(0);
+  });
+
+  it('generates thumbnail data URL in fallback mode', async () => {
+    const { generateThumbnail } = await import('@/lib/api');
+    const thumb = await generateThumbnail('C:\\Videos\\sample.mp4');
+    expect(thumb.startsWith('data:image/')).toBe(true);
+  });
+
+  it('picks video files in fallback mode', async () => {
+    const { pickVideoFiles } = await import('@/lib/api');
+    const files = await pickVideoFiles();
+    expect(Array.isArray(files)).toBe(true);
+    expect(files.length).toBeGreaterThan(0);
+  });
 });
